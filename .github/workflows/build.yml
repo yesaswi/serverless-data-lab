@@ -33,4 +33,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: gcr.io/${{ secrets.GCP_PROJECT_ID }}/data-lab:${{ github.sha }}
+        tags: gcr.io/${{ secrets.GCP_PROJECT_ID }}/data-lab:${{ github.sha }},gcr.io/${{ secrets.GCP_PROJECT_ID }}/data-lab:latest

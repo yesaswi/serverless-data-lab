@@ -41,7 +41,7 @@ variable "deploy_version" {
 
 # Cloud SQL instance
 resource "google_sql_database_instance" "mysql_instance" {
-  name             = "serverless-datalab-mysql"
+  name             = "serverless-datalab-mysql8"
   database_version = "MYSQL_8_0"
   region           = var.region_name
 
@@ -50,11 +50,19 @@ resource "google_sql_database_instance" "mysql_instance" {
 
     ip_configuration {
       ipv4_enabled = true
+      require_ssl  = false
+
+      authorized_networks {
+        value = "0.0.0.0/0"
+        name  = "all"
+      }
     }
 
     backup_configuration {
       enabled = true
     }
+
+    deletion_protection_enabled = false
   }
 }
 
@@ -78,6 +86,11 @@ resource "google_cloud_run_service" "rstudio" {
     spec {
       containers {
         image = "gcr.io/${var.project_id}/data-lab:${var.deploy_version}"
+        # image = "gcr.io/${var.project_id}/data-lab:2342b5e4780d1fa27fa244bab886e1c58c274a4a"
+
+        ports {
+          container_port = 8787
+        }
 
         resources {
           limits = {
@@ -86,43 +99,24 @@ resource "google_cloud_run_service" "rstudio" {
           }
         }
       }
-
-      service_account_name = google_service_account.rstudio_sa.email
     }
   }
 }
 
-resource "google_cloud_run_service_iam_member" "allow_authenticated" {
-  project  = google_cloud_run_service.rstudio.project
+resource "google_cloud_run_service_iam_binding" "allowUnauthenticated" {
+  project = google_cloud_run_service.rstudio.project
   location = google_cloud_run_service.rstudio.location
-  service  = google_cloud_run_service.rstudio.name
-  role     = "roles/run.invoker"
-  member   = "allAuthenticatedUsers"
-}
-
-# Custom IAM role and service account
-resource "google_project_iam_custom_role" "rstudio_custom_role" {
-  role_id     = "rstudioCustomRole"
-  title       = "RStudio Custom Role"
-  description = "Custom role for RStudio service account in the ServerlessDataLab project"
-  permissions = [
-    "storage.objects.get",
-    "storage.objects.list",
-    "storage.objects.create",
-    "storage.objects.update",
-    "storage.objects.delete",
-    "cloudsql.instances.get",
-    "cloudsql.instances.list",
+  service = google_cloud_run_service.rstudio.name
+  role = "roles/run.invoker"
+  members = [
+    "allUsers",
   ]
 }
 
-resource "google_service_account" "rstudio_sa" {
-  account_id   = "serverless-datalab-rstudio"
-  display_name = "RStudio Service Account"
+output "RStudio_url" {
+  value = "${google_cloud_run_service.rstudio.status[0].url}"
 }
 
-resource "google_project_iam_member" "rstudio_sa_member" {
-  project = var.project_id
-  role    = "projects/${var.project_id}/roles/${google_project_iam_custom_role.rstudio_custom_role.role_id}"
-  member  = "serviceAccount:${google_service_account.rstudio_sa.email}"
+output "SQL_url" {
+  value = "${google_sql_database_instance.mysql_instance.connection_name}"
 }

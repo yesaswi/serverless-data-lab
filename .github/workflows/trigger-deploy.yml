@@ -12,6 +12,6 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.REPO_DISPATCH_TOKEN }}
-        repository: yesaswi/test-nextjs-terraform
+        repository: yesaswi/serverless-data-lab
         event-type: deploy-function
         client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
